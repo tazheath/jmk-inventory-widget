@@ -1,26 +1,89 @@
 (function () {
-  function init() {
+  'use strict';
 
-  /* ═══ 0. CONTAINER ═══ */
-  const element = document.querySelector('.car-dir-widget');
-  if (!element) return;
+  /* Fallback if the script's own URL can't be read (used to locate style.css) */
+  const CSS_FALLBACK = 'https://cdn.jsdelivr.net/gh/tazheath/jmk-inventory-widget@main/style.css';
 
-  /* ═══ 1. CONFIG (read from data-attributes on .car-dir-widget) ═══ */
-  const AIRTABLE_TOKEN  = (element.dataset.token   || '').trim();
-  const BASE_ID         = (element.dataset.baseId  || '').trim();
-  const TABLE_NAME      = 'Vehicles';
+  /* Markup injected into every .car-dir-widget container */
+  const SCAFFOLD = `
+  <div class="car-dir">
+    <div class="car-dir__filters">
+      <button class="filter-tab active" data-filter="all">All Vehicles</button>
+      <button class="filter-tab" data-filter="car">Car</button>
+      <button class="filter-tab" data-filter="suv">SUV</button>
+      <button class="filter-tab" data-filter="minivan">Minivan</button>
+      <button class="filter-tab" data-filter="truck">Truck</button>
+    </div>
+    <div class="car-dir__grid"></div>
+  </div>
 
-  const LOCATION_FILTER = (element.dataset.location || '').trim();
-  const VEHICLE_FILTER  = (element.dataset.vehicle  || '').trim();
-  const BUTTON_TEXT     = 'Explore Vehicle';
+  <div class="car-modal" id="carModal" role="dialog" aria-modal="true" aria-labelledby="modalCarName">
+    <div class="car-modal__backdrop"></div>
+    <button class="car-modal__nav car-modal__nav--prev" id="modalPrev" aria-label="Previous vehicle"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></button>
+    <button class="car-modal__nav car-modal__nav--next" id="modalNext" aria-label="Next vehicle"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></button>
+    <div class="car-modal__dialog">
+      <button class="car-modal__close" aria-label="Close"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+      <div class="car-modal__img-wrap"><img class="car-modal__img" id="modalImg" src="" alt="" /></div>
+      <div class="car-modal__body">
+        <div class="car-modal__header">
+          <h3 class="car-modal__name" id="modalCarName"></h3>
+          <span class="car-modal__price" id="modalPrice"></span>
+        </div>
+        <p class="car-modal__description" id="modalDescription"></p>
+        <div class="car-modal__pills" id="modalPills"></div>
+        <div class="car-modal__specs">
+          <div class="car-modal__spec" id="modalSpecMileage"><div><span class="car-modal__spec-label">Mileage</span><span class="car-modal__spec-value" id="modalMileage"></span></div></div>
+          <div class="car-modal__spec car-modal__spec--vin" id="modalSpecVin"><div><span class="car-modal__spec-label">VIN</span><span class="car-modal__spec-value" id="modalVin"></span></div></div>
+          <div class="car-modal__spec" id="modalSpecTitle"><div><span class="car-modal__spec-label">Title</span><span class="car-modal__spec-value" id="modalTitle"></span></div></div>
+          <div class="car-modal__spec" id="modalSpecLocation"><div><span class="car-modal__spec-label">Location</span><a class="car-modal__spec-value car-modal__loc-link" id="modalLocation" href="#" target="_blank" rel="noopener noreferrer"></a></div></div>
+        </div>
+        <div class="car-modal__actions" id="modalActions">
+          <a class="car-modal__cta-btn" id="modalCtaBtn" href="#" target="_blank" rel="noopener noreferrer"></a>
+          <a class="car-modal__carfax" id="modalCarfax" href="#" target="_blank" rel="noopener noreferrer" aria-label="View Carfax report"><img src="https://www.carfaxonline.com/assets/subscriber/cfxlogo.jpg" width="135" height="auto" aria-label="CarFax logo - click to view carfax"></a>
+          <div class="car-modal__phones" id="modalPhones"></div>
+        </div>
+        <div class="car-modal__gallery" id="modalGallery"><div class="car-modal__gallery-grid" id="modalGalleryGrid"></div></div>
+      </div>
+    </div>
+  </div>
+`;
 
-  const grid = element.querySelector('.car-dir__grid');
-  if (!grid) return;
-
-  if (!AIRTABLE_TOKEN || !BASE_ID) {
-    grid.innerHTML = '<p class="car-dir__empty">Widget not configured: set data-base-id and data-token on .car-dir-widget.</p>';
-    return;
+  /* Load style.css once, from the same repo/branch the script is served from */
+  function injectCssOnce() {
+    if (document.querySelector('link[data-jmk-inv]')) return;
+    let href = CSS_FALLBACK;
+    const s = document.querySelector('script[src*="cdn.jsdelivr.net"][src*="javascript.js"]')
+           || document.querySelector('script[src*="javascript.js"]');
+    if (s && s.src) href = s.src.replace(/javascript\.js(\?.*)?$/, 'style.css');
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = href;
+    link.setAttribute('data-jmk-inv', '');
+    document.head.appendChild(link);
   }
+
+  function initWidget(element) {
+
+    /* Inject the widget markup into this container */
+    element.innerHTML = SCAFFOLD;
+
+    /* ═══ 1. CONFIG (from data-attributes on .car-dir-widget) ═══ */
+    const AIRTABLE_TOKEN  = (element.dataset.token   || '').trim();
+    const BASE_ID         = (element.dataset.baseId  || '').trim();
+    const TABLE_NAME      = 'Vehicles';
+
+    const LOCATION_FILTER = (element.dataset.location || '').trim();
+    const VEHICLE_FILTER  = (element.dataset.vehicle  || '').trim();
+    const BUTTON_TEXT     = 'Explore Vehicle';
+
+    const grid = element.querySelector('.car-dir__grid');
+    if (!grid) return;
+
+    if (!AIRTABLE_TOKEN || !BASE_ID) {
+      grid.innerHTML = '<p class="car-dir__empty">Widget not configured: set data-base-id and data-token on the .car-dir-widget div.</p>';
+      return;
+    }
+
   const ICON_MILEAGE = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m12 14 4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/></svg>';
   const ICON_TRANS   = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9h18"/><path d="M3 15h18"/><path d="M8 3v18"/><path d="M16 3v18"/></svg>';
   const PHONE_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.9.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></svg>';
@@ -460,11 +523,19 @@
 
   /* ═══ 5. GO ═══ */
   loadInventory();
-  } // end init
+
+  } // end initWidget
+
+  function boot() {
+    injectCssOnce();
+    const widgets = document.querySelectorAll('.car-dir-widget');
+    if (!widgets.length) return;
+    widgets.forEach(initWidget);
+  }
 
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
+    document.addEventListener('DOMContentLoaded', boot);
   } else {
-    init();
+    boot();
   }
 })();
