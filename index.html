@@ -1,0 +1,93 @@
+<!-- ═══════════════════════════════════════════════════════════════
+     JMK AUTO — self-hosted inventory widget (embed snippet)
+
+     Per-install config lives ONLY on .car-dir-widget below:
+       data-location   "Fairview" | "Ogden" | ""  (blank = all)
+       data-vehicle    "Car" | "SUV" | "Truck" | "Minivan" | ""  (blank = all)
+       data-base-id    Airtable Base ID  (app...)
+       data-token      Airtable read-only PAT  (pat...)
+
+     Replace USERNAME/REPO in the two jsDelivr URLs with your repo.
+════════════════════════════════════════════════════════════════ -->
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/USERNAME/REPO@main/style.css">
+
+<div class="car-dir-widget"
+     data-location=""
+     data-vehicle=""
+     data-base-id="YOUR_SANDBOX_BASE_ID"
+     data-token="YOUR_SANDBOX_READONLY_TOKEN">
+
+  <div class="car-dir">
+
+    <div class="car-dir__filters">
+      <button class="filter-tab active" data-filter="all">All Vehicles</button>
+      <button class="filter-tab" data-filter="car">Car</button>
+      <button class="filter-tab" data-filter="suv">SUV</button>
+      <button class="filter-tab" data-filter="minivan">Minivan</button>
+      <button class="filter-tab" data-filter="truck">Truck</button>
+    </div>
+
+    <div class="car-dir__grid"></div>
+
+  </div>
+
+  <!-- Modal -->
+  <div class="car-modal" id="carModal" role="dialog" aria-modal="true" aria-labelledby="modalCarName">
+    <div class="car-modal__backdrop"></div>
+
+    <button class="car-modal__nav car-modal__nav--prev" id="modalPrev" aria-label="Previous vehicle">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+    </button>
+    <button class="car-modal__nav car-modal__nav--next" id="modalNext" aria-label="Next vehicle">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+    </button>
+
+    <div class="car-modal__dialog">
+      <button class="car-modal__close" aria-label="Close">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+      <div class="car-modal__img-wrap">
+        <img class="car-modal__img" id="modalImg" src="" alt="" />
+      </div>
+      <div class="car-modal__body">
+        <div class="car-modal__header">
+          <h3 class="car-modal__name" id="modalCarName"></h3>
+          <span class="car-modal__price" id="modalPrice"></span>
+        </div>
+        <p class="car-modal__description" id="modalDescription"></p>
+        <div class="car-modal__pills" id="modalPills"></div>
+        <div class="car-modal__specs">
+          <div class="car-modal__spec" id="modalSpecMileage">
+            <div><span class="car-modal__spec-label">Mileage</span><span class="car-modal__spec-value" id="modalMileage"></span></div>
+          </div>
+          <div class="car-modal__spec car-modal__spec--vin" id="modalSpecVin">
+            <div><span class="car-modal__spec-label">VIN</span><span class="car-modal__spec-value" id="modalVin"></span></div>
+          </div>
+          <div class="car-modal__spec" id="modalSpecTitle">
+            <div><span class="car-modal__spec-label">Title</span><span class="car-modal__spec-value" id="modalTitle"></span></div>
+          </div>
+          <div class="car-modal__spec" id="modalSpecLocation">
+            <div><span class="car-modal__spec-label">Location</span><a class="car-modal__spec-value car-modal__loc-link" id="modalLocation" href="#" target="_blank" rel="noopener noreferrer"></a></div>
+          </div>
+        </div>
+
+        <div class="car-modal__actions" id="modalActions">
+          <a class="car-modal__cta-btn" id="modalCtaBtn" href="#" target="_blank" rel="noopener noreferrer"></a>
+          <a class="car-modal__carfax" id="modalCarfax" href="#" target="_blank" rel="noopener noreferrer" aria-label="View Carfax report">
+            <img src="https://www.carfaxonline.com/assets/subscriber/cfxlogo.jpg" width="135" height="auto" aria-label="CarFax logo - click to view carfax">
+          </a>
+          <div class="car-modal__phones" id="modalPhones"></div>
+        </div>
+
+        <div class="car-modal__gallery" id="modalGallery">
+          <div class="car-modal__gallery-grid" id="modalGalleryGrid"></div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/gh/USERNAME/REPO@main/javascript.js" defer></script>
