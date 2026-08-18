@@ -526,11 +526,28 @@
 
   } // end initWidget
 
+  /* Init any container that hasn't been initialised yet (guard prevents doubles) */
+  function scan() {
+    const widgets = document.querySelectorAll('.car-dir-widget:not([data-jmk-init])');
+    widgets.forEach(function (el) {
+      el.setAttribute('data-jmk-init', '');
+      injectCssOnce();
+      initWidget(el);
+    });
+  }
+
   function boot() {
-    injectCssOnce();
-    const widgets = document.querySelectorAll('.car-dir-widget');
-    if (!widgets.length) return;
-    widgets.forEach(initWidget);
+    scan();
+    /* Site builders (Duda, etc.) may inject the widget markup AFTER load,
+       so keep watching the DOM for a short window and init late arrivals. */
+    if (window.MutationObserver) {
+      const obs = new MutationObserver(scan);
+      obs.observe(document.documentElement, { childList: true, subtree: true });
+      setTimeout(function () { obs.disconnect(); }, 10000);
+    } else {
+      let n = 0;
+      const iv = setInterval(function () { scan(); if (++n > 40) clearInterval(iv); }, 250);
+    }
   }
 
   if (document.readyState === 'loading') {
