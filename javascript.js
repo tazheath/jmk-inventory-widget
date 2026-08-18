@@ -49,23 +49,45 @@
 `;
 
   /* Load style.css once, from the same repo/branch the script is served from */
-  function injectCssOnce() {
-    if (document.querySelector('link[data-jmk-inv]')) return;
-    let href = CSS_FALLBACK;
-    const s = document.querySelector('script[src*="cdn.jsdelivr.net"][src*="javascript.js"]')
-           || document.querySelector('script[src*="javascript.js"]');
-    if (s && s.src) href = s.src.replace(/javascript\.js(\?.*)?$/, 'style.css');
-    const link = document.createElement('link');
-    link.rel = 'stylesheet';
-    link.href = href;
-    link.setAttribute('data-jmk-inv', '');
-    document.head.appendChild(link);
+  /* --- CSS readiness: reveal widgets only once the stylesheet has loaded --- */
+  let cssReady = false;
+  const cssWaiters = [];
+  function onCssReady(cb) { cssReady ? cb() : cssWaiters.push(cb); }
+  function flushCss() {
+    if (cssReady) return;
+    cssReady = true;
+    cssWaiters.splice(0).forEach(function (fn) { fn(); });
+  }
+
+  function ensureCss() {
+    let link = document.querySelector('link[data-jmk-inv]');
+    if (!link) {
+      let href = CSS_FALLBACK;
+      const s = document.querySelector('script[src*="cdn.jsdelivr.net"][src*="javascript.js"]')
+             || document.querySelector('script[src*="javascript.js"]');
+      if (s && s.src) href = s.src.replace(/javascript\.js(\?.*)?$/, 'style.css');
+      link = document.createElement('link');
+      link.rel = 'stylesheet';
+      link.href = href;
+      link.setAttribute('data-jmk-inv', '');
+      document.head.appendChild(link);
+    }
+    if (link.sheet) { flushCss(); return; }          // already loaded
+    link.addEventListener('load',  flushCss, { once: true });
+    link.addEventListener('error', flushCss, { once: true }); // fail-open: reveal anyway
+    setTimeout(flushCss, 3000);                        // safety net if load never fires
   }
 
   function initWidget(element) {
 
+    /* Hide until the stylesheet is ready, so the modal never flashes unstyled */
+    element.style.visibility = 'hidden';
+
     /* Inject the widget markup into this container */
     element.innerHTML = SCAFFOLD;
+
+    /* Reveal once CSS has loaded (or after the safety timeout) */
+    onCssReady(function () { element.style.visibility = ''; });
 
     /* ═══ 1. CONFIG (from data-attributes on .car-dir-widget) ═══ */
     const AIRTABLE_TOKEN  = (element.dataset.token   || '').trim();
@@ -531,7 +553,7 @@
     const widgets = document.querySelectorAll('.car-dir-widget:not([data-jmk-init])');
     widgets.forEach(function (el) {
       el.setAttribute('data-jmk-init', '');
-      injectCssOnce();
+      ensureCss();
       initWidget(el);
     });
   }
