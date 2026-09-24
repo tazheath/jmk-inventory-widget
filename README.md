@@ -23,7 +23,7 @@ The embed is an **empty config div** plus the **script tag**. The script injects
      data-base-id="appXXXXXXXXXXXXXX"
      data-token="patXXXXXXXXXXXXXX"></div>
 
-<script src="https://cdn.jsdelivr.net/gh/tazheath/jmk-inventory-widget@COMMIT_SHA/javascript.js" defer></script>
+<script src="https://cdn.jsdelivr.net/gh/tazheath/jmk-inventory-widget@458c692f80cd5ba100f50a2c2629821346ab2bd2/javascript.js" defer></script>
 ```
 
 - Leave the div empty. Anything inside it is replaced when the widget loads.
