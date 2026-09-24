@@ -183,7 +183,7 @@
   async function loadInventory() {
     grid.innerHTML = '<p style="grid-column:1/-1;text-align:center;color:#888;padding:40px;">Loading inventory…</p>';
 
-    const clauses = [`{Status}!='Sold'`];
+    const clauses = [`{Status}!='Sold'`, `{Status}!='Archive'`];
     if (LOCATION_FILTER) clauses.push(`LOWER({Location})='${LOCATION_FILTER.toLowerCase()}'`);
     if (VEHICLE_FILTER)  clauses.push(`LOWER({Vehicle Type})='${VEHICLE_FILTER.toLowerCase()}'`);
     const formula = clauses.length > 1 ? `AND(${clauses.join(',')})` : clauses[0];
