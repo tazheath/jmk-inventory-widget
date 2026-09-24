@@ -8,29 +8,36 @@ Originally built for JMK Auto; designed to be reusable across dealership sites b
 
 | File | Role |
 |------|------|
-| `javascript.js` | Widget logic. Served via jsDelivr. |
-| `style.css` | Styles. Served via jsDelivr. |
-| `index.html` | The embed snippet — copy this onto a page and fill in the config. Not served; it's your reference/template. |
+| `javascript.js` | Widget logic. Builds its own markup and loads `style.css` automatically. Served via jsDelivr. |
+| `style.css` | Styles. Loaded by `javascript.js` from the same repo/commit. Served via jsDelivr. |
+| `index.html` | Reference copy of the embed snippet. Not served. |
 
 ## Embed
 
-Paste onto the page, replace `USERNAME/REPO` in both URLs, and set the four config values on `.car-dir-widget`:
+The embed is an **empty config div** plus the **script tag**. The script injects all widget markup (filter tabs, grid, modal) and loads the stylesheet itself — no `<link>` tag and no pasted markup needed.
 
 ```html
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/USERNAME/REPO@main/style.css">
-
 <div class="car-dir-widget"
      data-location=""
      data-vehicle=""
      data-base-id="appXXXXXXXXXXXXXX"
-     data-token="patXXXXXXXXXXXXXX">
-  <!-- markup from index.html goes here -->
-</div>
+     data-token="patXXXXXXXXXXXXXX"></div>
 
-<script src="https://cdn.jsdelivr.net/gh/USERNAME/REPO@main/javascript.js" defer></script>
+<script src="https://cdn.jsdelivr.net/gh/tazheath/jmk-inventory-widget@COMMIT_SHA/javascript.js" defer></script>
 ```
 
-Use the full markup from `index.html` (it includes the modal). Only the four attributes below change per install.
+- Leave the div empty. Anything inside it is replaced when the widget loads.
+- The widget stays hidden until its stylesheet loads (3-second fail-open), so the modal never flashes unstyled.
+- Multiple widgets on one page are fine — each div initializes independently; the stylesheet loads once.
+
+### Duda
+
+Duda doesn't run `<script>` tags placed inside HTML widgets:
+
+- Put the **div** in an HTML widget where the inventory should appear.
+- Put the **script tag** in **Settings → Head/Body HTML → Body-End HTML**.
+
+The script watches the page for 10 seconds after load, so it picks up the div even when Duda injects it late. Test on **Preview** or the **published** page — the editor canvas won't run it.
 
 ## Config (data-attributes on `.car-dir-widget`)
 
@@ -45,32 +52,41 @@ Use the full markup from `index.html` (it includes the modal). Only the four att
 
 ```html
 <!-- Fairview, all types -->
-<div class="car-dir-widget" data-location="Fairview" data-vehicle="" data-base-id="app…" data-token="pat…">
+<div class="car-dir-widget" data-location="Fairview" data-vehicle="" data-base-id="app…" data-token="pat…"></div>
 
 <!-- Ogden, all types -->
-<div class="car-dir-widget" data-location="Ogden" data-vehicle="" data-base-id="app…" data-token="pat…">
+<div class="car-dir-widget" data-location="Ogden" data-vehicle="" data-base-id="app…" data-token="pat…"></div>
 
 <!-- Ogden trucks only -->
-<div class="car-dir-widget" data-location="Ogden" data-vehicle="Truck" data-base-id="app…" data-token="pat…">
+<div class="car-dir-widget" data-location="Ogden" data-vehicle="Truck" data-base-id="app…" data-token="pat…"></div>
 ```
 
 ## Airtable requirements
 
 - Table named **`Vehicles`**.
-- A **`Sort Date`** field for newest-first ordering.
-- Records with `Status` = `Sold` are hidden automatically.
+- A **`Sort Date`** formula field for newest-first ordering: `IF({Date Listed}, {Date Listed}, CREATED_TIME())`.
+- Records with `Status` = **`Sold`** or **`Archive`** are hidden automatically.
+- Field names must match the column headers exactly (case- and space-sensitive): `Make`, `Model`, `Year`, `VIN`, `Price`, `Mileage`, `Vehicle Type`, `Drive Type`, `Transmission`, `Title`, `Location`, `Status`, `Photos`, `Description`.
 - Token scope: `data.records:read`, limited to this base only.
 
 ## Updating
 
-jsDelivr caches `@main` for a while. After pushing an edit, force a refresh once:
+1. Upload or commit the changed file(s).
+2. Copy the new **full commit SHA** (commits page → copy icon on the latest commit).
+3. Swap it into the `<script>` src. The stylesheet follows automatically from the same commit.
+
+Pinning to a commit SHA means pages never pick up a half-finished change and there's no cache to wait on.
+
+If you reference `@main` instead (fine for testing), jsDelivr caches it. Force a refresh after pushing:
 
 ```
-https://purge.jsdelivr.net/gh/USERNAME/REPO@main/javascript.js
+https://purge.jsdelivr.net/gh/tazheath/jmk-inventory-widget@main/javascript.js
+https://purge.jsdelivr.net/gh/tazheath/jmk-inventory-widget@main/style.css
 ```
-
-For production, pin a version tag instead (`git tag v1.0.0` → reference `@v1.0.0`) so pages never pull a half-finished commit.
 
 ## Security note
 
-The token sits in the page's HTML. That's an accepted tradeoff here: it's **read-only** and the data is already public, so the worst case is someone reading inventory that's public anyway. Do **not** put a token with write scope in the embed.
+The token sits in the page's HTML. That's an accepted tradeoff here: it's **read-only** and the data is already public, so the worst case is someone reading inventory that's public anyway.
+
+- Do **not** put a token with write scope in the embed.
+- Do **not** commit a real token to this repo. It's public, and GitHub reports exposed Airtable tokens, which can get them revoked automatically. Use a placeholder in `index.html`.
