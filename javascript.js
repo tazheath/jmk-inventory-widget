@@ -42,6 +42,7 @@
           <a class="car-modal__carfax" id="modalCarfax" href="#" target="_blank" rel="noopener noreferrer" aria-label="View Carfax report"><img src="https://www.carfaxonline.com/assets/subscriber/cfxlogo.jpg" width="135" height="auto" aria-label="CarFax logo - click to view carfax"></a>
           <div class="car-modal__phones" id="modalPhones"></div>
         </div>
+        <div class="car-modal__video is-hidden" id="modalVideo"><div class="car-modal__video-frame" id="modalVideoFrame"></div></div>
         <div class="car-modal__gallery" id="modalGallery"><div class="car-modal__gallery-grid" id="modalGalleryGrid"></div></div>
       </div>
     </div>
@@ -130,6 +131,23 @@
     }
   };
   const locInfo = loc => LOCATIONS[String(loc).toLowerCase().trim()] || {};
+
+  /* Resolve the Video field into an embed. Handles YouTube, Vimeo, or a raw file. */
+  function getVideoEmbed(raw) {
+    let url = '', isFile = false;
+    if (Array.isArray(raw) && raw.length) { url = raw[0].url; isFile = true; }
+    else if (typeof raw === 'string')     { url = raw.trim(); }
+    if (!url) return null;
+
+    const yt = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/);
+    if (yt) return { type: 'iframe', src: 'https://www.youtube.com/embed/' + yt[1] };
+
+    const vm = url.match(/vimeo\.com\/(?:video\/)?(\d+)/);
+    if (vm) return { type: 'iframe', src: 'https://player.vimeo.com/video/' + vm[1] };
+
+    if (isFile || /\.(mp4|webm|mov|m4v)(\?|$)/i.test(url)) return { type: 'file', src: url };
+    return null;
+  }
 
   /* ═══ Full-screen lightbox (built once, reused) ═══ */
   let lightbox = null, lightboxImg = null, lightboxPhotos = [], lightboxIndex = 0;
@@ -249,6 +267,7 @@
     const price     = f.Price   ? '$' + Number(f.Price).toLocaleString() : '';
     const location  = String(f.Location || '').split(',')[0].trim();         
     const title     = String(f.Title || '').trim();
+    const video = getVideoEmbed(f.Video);
     const extraPhotos = photos.slice(1).map((u, i) => `data-photo${i + 1}="${esc(u)}"`).join(' ');
 
     return `
@@ -260,6 +279,7 @@
            data-description="${esc(desc)}" data-image="${esc(main)}"
            data-show-carfax="true" data-car-vin="${esc(vin)}"
            data-location="${esc(location)}" data-title="${esc(title)}" data-button-text="${esc(BUTTON_TEXT)}"
+           data-video-type="${video ? video.type : ''}" data-video-src="${esc(video ? video.src : '')}"
            data-modal-button-text="" data-modal-button-url="" ${extraPhotos}>
         <div class="car-card__img-wrap">
           <img class="car-card__img" src="${esc(main)}" alt="${esc(make)} ${esc(model)}" loading="lazy" />
@@ -464,6 +484,30 @@
         modalActions.classList.toggle('is-hidden', ctaHidden && !carfaxUrl);
       }
 
+      /* Video tour */
+      const videoType  = card.getAttribute('data-video-type') || '';
+      const videoSrc   = card.getAttribute('data-video-src') || '';
+      const videoWrap  = modal.querySelector('#modalVideo');
+      const videoFrame = modal.querySelector('#modalVideoFrame');
+      if (videoFrame) {
+        videoFrame.innerHTML = '';
+        if (videoSrc && videoType === 'iframe') {
+          const ifr = document.createElement('iframe');
+          ifr.src = videoSrc;
+          ifr.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture';
+          ifr.allowFullscreen = true;
+          videoFrame.appendChild(ifr);
+          videoWrap && videoWrap.classList.remove('is-hidden');
+        } else if (videoSrc && videoType === 'file') {
+          const vid = document.createElement('video');
+          vid.src = videoSrc; vid.controls = true; vid.playsInline = true;
+          videoFrame.appendChild(vid);
+          videoWrap && videoWrap.classList.remove('is-hidden');
+        } else {
+          videoWrap && videoWrap.classList.add('is-hidden');
+        }
+      }
+
       /* Gallery + full-screen lightbox */
       if (modalGalleryGrid) {
         modalGalleryGrid.innerHTML = '';
@@ -516,6 +560,8 @@
     function closeModal() {
       modal.classList.remove('is-open');
       document.body.style.overflow = '';
+      const vf = modal.querySelector('#modalVideoFrame');
+      if (vf) vf.innerHTML = '';
     }
 
     function navigateTo(index) {
